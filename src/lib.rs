@@ -1,20 +1,64 @@
+use core::f32::consts::PI;
+use eg_seven_segment::SevenSegmentStyleBuilder;
+use embedded_graphics::mono_font::iso_8859_13::FONT_10X20;
+use embedded_graphics::prelude::DrawTarget;
+use embedded_graphics::primitives::{Line, Styled, StyledDrawable};
 use embedded_graphics_web_simulator::{
     display::WebSimulatorDisplay, output_settings::OutputSettingsBuilder,
 };
+use std::rc::Rc;
+use std::{cell::RefCell, time::Duration};
 use wasm_bindgen::prelude::*;
-use web_sys::console;
+use wasm_timer::{Delay, Instant};
 
+use embedded_graphics::geometry::Dimensions;
 use embedded_graphics::{
-    image::Image,
     mono_font::{ascii::FONT_6X9, MonoTextStyle},
-    pixelcolor::Rgb565,
-    prelude::{Point, Primitive, WebColors},
+    pixelcolor::Rgb666,
+    prelude::{Point, Primitive, RgbColor, Size, WebColors},
     primitives::{Circle, PrimitiveStyle},
     text::Text,
     Drawable,
 };
+fn window() -> web_sys::Window {
+    web_sys::window().expect("no global `window` exists")
+}
 
-use tinybmp::Bmp;
+fn request_animation_frame(f: &Closure<dyn FnMut()>) {
+    window()
+        .request_animation_frame(f.as_ref().unchecked_ref())
+        .expect("should register `requestAnimationFrame` OK");
+}
+/// Converts a polar coordinate (angle/distance) into an (X, Y) coordinate centered around the
+/// center of the circle.
+///
+/// The angle is relative to the 12 o'clock position and the radius is relative to the edge of the
+/// clock face.
+fn polar(circle: &Circle, angle: f32, radius_delta: i32) -> Point {
+    let radius = circle.diameter as f32 / 2.0 + radius_delta as f32;
+    let angle = angle + PI;
+    circle.center()
+        + Point::new(
+            (angle.sin() * radius) as i32,
+            -(angle.cos() * radius) as i32,
+        )
+}
+// Converts an hour into an angle in radians.
+fn hour_to_angle(hour: u32) -> f32 {
+    // Convert from 24 to 12 hour time.
+    let hour = hour % 12;
+
+    (hour as f32 / 12.0) * 2.0 * PI
+}
+/// Creates a centered circle for the clock face.
+fn create_face(target: &impl DrawTarget) -> Circle {
+    // The draw target bounding box can be used to determine the size of the display.
+    let bounding_box = target.bounding_box();
+
+    let diameter = bounding_box.size.width.min(bounding_box.size.height) - 2 * 10;
+
+    Circle::with_center(bounding_box.center(), diameter)
+}
 
 // This is like the `main` function, except for JavaScript.
 #[wasm_bindgen(start)]
@@ -35,49 +79,176 @@ pub fn main_js() -> Result<(), JsValue> {
     body.set_inner_html(
         r#"
     <header>
-    Embedded Graphics Web Simulator!
+    EcoCar Sally Dashboard Preview
   </header>
 
-  <div id="custom-container"></div>
+  <div id="running-mode" class="display">
+  <h4>Running Mode</h4>
+  </div>
+  
+  <div id="charging-mode" class="display">
+  <h4>Charging Mode</h4>
+  </div>
+  
+  <div id="startup-mode" class="display">
+  <h4>Startup Mode</h4>
+  </div>
+
+  <div id="standby-mode" class="display">
+  <h4>Standby Mode</h4>
+  </div>
+  
   <footer>
-    🦀 A rust-embedded x rust-wasm experiment 🦀
-    <br />Made using
-    <a href="https://github.com/jamwaffles" target="_blank">@jamwaffles'</a>
-    <a href="https://github.com/embedded-graphics/simulator" target="_blank">Embedded Graphics</a>
+  <p id="fps"></p>
   </footer>
     "#,
     );
 
+    const DISPLAY_WIDTH: u32 = 480;
+    const DISPLAY_HEIGHT: u32 = 320;
+
     let output_settings = OutputSettingsBuilder::new()
         .scale(1)
-        .pixel_spacing(1)
+        .pixel_spacing(0)
         .build();
-    let mut text_display = WebSimulatorDisplay::new((128, 64), &output_settings, None);
-    let mut img_display = WebSimulatorDisplay::new(
-        (128, 128),
+
+    let mut startup_display: WebSimulatorDisplay<Rgb666> = WebSimulatorDisplay::new(
+        (DISPLAY_WIDTH, DISPLAY_HEIGHT),
         &output_settings,
-        document.get_element_by_id("custom-container").as_ref(),
+        document.get_element_by_id("startup-mode").as_ref(),
+    );
+    let mut standby_display: WebSimulatorDisplay<Rgb666> = WebSimulatorDisplay::new(
+        (DISPLAY_WIDTH, DISPLAY_HEIGHT),
+        &output_settings,
+        document.get_element_by_id("standby-mode").as_ref(),
+    );
+    let mut charging_display: WebSimulatorDisplay<Rgb666> = WebSimulatorDisplay::new(
+        (DISPLAY_WIDTH, DISPLAY_HEIGHT),
+        &output_settings,
+        document.get_element_by_id("charging-mode").as_ref(),
+    );
+    let mut running_display: WebSimulatorDisplay<Rgb666> = WebSimulatorDisplay::new(
+        (DISPLAY_WIDTH, DISPLAY_HEIGHT),
+        &output_settings,
+        document.get_element_by_id("running-mode").as_ref(),
     );
 
-    let style = MonoTextStyle::new(&FONT_6X9, Rgb565::CSS_WHITE);
+    let speed_style = SevenSegmentStyleBuilder::new()
+        .digit_size(Size::new(25, 60))
+        .digit_spacing(4) // 5px spacing between digits
+        .segment_width(5) // 5px wide segments
+        .segment_color(Rgb666::WHITE) // active segments are green
+        .inactive_segment_color(Rgb666::BLACK)
+        .build();
+    let fill_white = PrimitiveStyle::with_fill(Rgb666::WHITE);
 
-    if Text::new("Hello, wasm world!", Point::new(10, 30), style)
-        .draw(&mut text_display)
-        .is_err()
-    {
-        console::log_1(&"Couldn't draw text".into());
-    }
-    text_display.flush().expect("could not flush buffer");
+    // let mut i = 0;
+    // loop {
+    //     Text::new(format!("{}", i % 100).as_str(), Point::new(200, 200), style)
+    //         .draw(&mut running_display)
+    //         .unwrap();
+    //     i += 1;
 
-    if Circle::new(Point::new(29, 29), 70)
-        .into_styled(PrimitiveStyle::with_stroke(Rgb565::CSS_WHITE, 1))
-        .draw(&mut img_display)
-        .is_err()
-    {
-        console::log_1(&"Couldn't draw circle".into());
-    }
+    //     // Flush Displays
+    //     startup_display.flush().expect("could not flush buffer");
+    //     standby_display.flush().expect("could not flush buffer");
+    //     charging_display.flush().expect("could not flush buffer");
+    //     running_display.flush().expect("could not flush buffer");
 
-    img_display.flush().expect("could not flush buffer");
+    //     sleep(Duration::from_millis(20));
+    // }
+
+    // Here we want to call `requestAnimationFrame` in a loop, but only a fixed
+    // number of times. After it's done we want all our resources cleaned up. To
+    // achieve this we're using an `Rc`. The `Rc` will eventually store the
+    // closure we want to execute on each frame, but to start out it contains
+    // `None`.
+    //
+    // After the `Rc` is made we'll actually create the closure, and the closure
+    // will reference one of the `Rc` instances. The other `Rc` reference is
+    // used to store the closure, request the first frame, and then is dropped
+    // by this function.
+    //
+    // Inside the closure we've got a persistent `Rc` reference, which we use
+    // for all future iterations of the loop
+    let f = Rc::new(RefCell::new(None));
+    let g = f.clone();
+
+    let mut i = 0;
+    let mut tac_pos = 0f32;
+
+    const NUM_ITER: i32 = 60;
+    *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
+        i += 1;
+        if i > NUM_ITER {
+            // Drop our handle to this closure so that it will get cleaned
+            // up once we return.
+            let _ = f.borrow_mut().take();
+            return;
+        }
+
+        // Render Running State
+        let tac = create_face(&running_display);
+        let tac_center = Circle::new(
+            running_display.bounding_box().center() - Point::new(5, 5),
+            10,
+        );
+        tac_center
+            .draw_styled(&fill_white, &mut running_display)
+            .unwrap();
+
+        // Render Vehicle Speed
+        Text::new(
+            format!("{}", i % 100).as_str(),
+            Point::new(260, 240),
+            speed_style,
+        )
+        .draw(&mut running_display)
+        .unwrap();
+        // Render speed unit
+        Text::new(
+            "km/h",
+            Point::new(320, 240),
+            MonoTextStyle::new(&FONT_10X20, Rgb666::WHITE),
+        )
+        .draw(&mut running_display)
+        .unwrap();
+
+        // Render Tacometer
+        let tac_speed = 0.08f32;
+        let old_tac_stick = polar(&tac, tac_pos - tac_speed, -10);
+        Line::new(tac.center(), old_tac_stick)
+            .into_styled(PrimitiveStyle::with_stroke(Rgb666::BLACK, 4))
+            .draw(&mut running_display)
+            .unwrap();
+        let tac_stick = polar(&tac, tac_pos, -10);
+        Line::new(tac.center(), tac_stick)
+            .into_styled(PrimitiveStyle::with_stroke(Rgb666::RED, 4))
+            .draw(&mut running_display)
+            .unwrap();
+
+        // Draw 12 graduations.
+        for angle in (0..10).map(hour_to_angle) {
+            // Start point on circumference.
+            let start = polar(&tac, angle, 9);
+
+            // End point offset by 10 pixels from the edge.
+            let end = polar(&tac, angle, -10);
+
+            Line::new(start, end)
+                .into_styled(PrimitiveStyle::with_stroke(Rgb666::WHITE, 4))
+                .draw(&mut running_display)
+                .unwrap();
+        }
+
+        running_display.flush().expect("could not flush buffer");
+        tac_pos += tac_speed;
+
+        // Schedule ourself for another requestAnimationFrame callback.
+        request_animation_frame(f.borrow().as_ref().unwrap());
+    }) as Box<dyn FnMut()>));
+
+    request_animation_frame(g.borrow().as_ref().unwrap());
 
     Ok(())
 }
