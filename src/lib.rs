@@ -129,7 +129,7 @@ pub fn main_js() -> Result<(), JsValue> {
   </div>
   
   <footer>
-  <p id="fps"></p>
+  <p>Source: <a href="https://github.com/DashCampbell/EcoCar-Sally-Dashboard-Preview">https://github.com/DashCampbell/EcoCar-Sally-Dashboard-Preview</a></p>
   </footer>
     "#,
     );
