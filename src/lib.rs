@@ -578,6 +578,14 @@ pub fn main_js() -> Result<(), JsValue> {
         .segment_color(Rgb666::WHITE) // active segments are green
         .inactive_segment_color(Rgb666::BLACK)
         .build();
+    let rpm_style = SevenSegmentStyleBuilder::new()
+        .digit_size(Size::new(8, 16))
+        .digit_spacing(0) // 5px spacing between digits
+        .segment_width(2) // 5px wide segments
+        .segment_color(Rgb666::WHITE) // active segments are green
+        .inactive_segment_color(Rgb666::BLACK)
+        .build();
+
     let fill_white = PrimitiveStyle::with_fill(Rgb666::WHITE);
     let loading_border_style = PrimitiveStyleBuilder::new()
         .stroke_color(Rgb666::BLACK)
@@ -590,7 +598,7 @@ pub fn main_js() -> Result<(), JsValue> {
     let loading_text_style = SevenSegmentStyleBuilder::new()
         .digit_size(Size::new(10, 20))
         .digit_spacing(4) // 5px spacing between digits
-        .segment_width(2) // 5px wide segments
+        .segment_width(3) // 5px wide segments
         .segment_color(Rgb666::BLACK) // active segments are green
         .inactive_segment_color(Rgb666::WHITE)
         .build();
@@ -696,7 +704,7 @@ pub fn main_js() -> Result<(), JsValue> {
             Text::with_alignment(
                 format!("{}", j).as_str(),
                 text_pos,
-                MonoTextStyle::new(&FONT_10X20, Rgb666::WHITE),
+                rpm_style,
                 embedded_graphics::text::Alignment::Center,
             )
             .draw(&mut running_display)
@@ -779,7 +787,7 @@ pub fn main_js() -> Result<(), JsValue> {
 
         Text::with_alignment(
             format!("{}", (i as f32 / NUM_ITER as f32 * 48f32) as u32).as_str(),
-            Point::new(charging_display.bounding_box().center().x, 200),
+            Point::new(charging_display.bounding_box().center().x + 10, 200),
             loading_text_style,
             embedded_graphics::text::Alignment::Right,
         )
