@@ -44,7 +44,7 @@ fn polar(circle: &Circle, angle: f32, radius_delta: i32) -> Point {
 }
 // Converts an rpm into an angle in radians.
 fn rpm_to_angle(rpm: u32) -> f32 {
-    (rpm as f32 / 800f32) * 2.0 * PI
+    (rpm as f32 / 900f32) * 2.0 * PI
 }
 /// Creates a centered circle for the clock face.
 fn create_face(target: &impl DrawTarget) -> Circle {
@@ -654,21 +654,31 @@ pub fn main_js() -> Result<(), JsValue> {
         .unwrap();
 
         // Render Tacometer
+        let start_angle = 80;
         let tac_speed = 0.07f32;
-        let old_tac_stick = polar(&tac, tac_pos - tac_speed, -10);
+        let corrected_tac_pos = tac_pos - 100f32;
+        let old_tac_stick = polar(&tac, corrected_tac_pos - tac_speed, -10);
         Line::new(tac.center(), old_tac_stick)
             .into_styled(PrimitiveStyle::with_stroke(Rgb666::BLACK, 3))
             .draw(&mut running_display)
             .unwrap();
-        let tac_stick = polar(&tac, tac_pos, -10);
+        let tac_stick = polar(&tac, corrected_tac_pos + tac_speed, -10);
         Line::new(tac.center(), tac_stick)
             .into_styled(PrimitiveStyle::with_stroke(Rgb666::RED, 3))
             .draw(&mut running_display)
             .unwrap();
 
+        Text::new(
+            "RPM x 1000",
+            Point::new(180, 290),
+            MonoTextStyle::new(&FONT_10X20, Rgb666::WHITE),
+        )
+        .draw(&mut running_display)
+        .unwrap();
+
         // Render Tacometer Lines
         // 1000 rpm lines
-        for angle in (0..7 * 100).step_by(100).map(rpm_to_angle) {
+        for angle in (start_angle..7 * 100).step_by(100).map(rpm_to_angle) {
             // Start point on circumference.
             let start = polar(&tac, angle, 12);
 
@@ -681,7 +691,7 @@ pub fn main_js() -> Result<(), JsValue> {
                 .unwrap();
         }
         // 100rpm lines
-        for angle in (0..6 * 100).step_by(10).map(rpm_to_angle) {
+        for angle in (start_angle..7 * 100 - 10).step_by(10).map(rpm_to_angle) {
             // Start point on circumference.
             let start = polar(&tac, angle, 9);
 
@@ -694,7 +704,7 @@ pub fn main_js() -> Result<(), JsValue> {
                 .unwrap();
         }
         // 500rpm lines
-        for angle in (0..6 * 100).step_by(50).map(rpm_to_angle) {
+        for angle in (start_angle..7 * 100).step_by(50).map(rpm_to_angle) {
             // Start point on circumference.
             let start = polar(&tac, angle, 9);
 
