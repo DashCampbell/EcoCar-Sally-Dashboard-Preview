@@ -1,7 +1,7 @@
 use core::f32::consts::PI;
 use eg_seven_segment::SevenSegmentStyleBuilder;
 use embedded_graphics::mono_font::iso_8859_13::FONT_10X20;
-use embedded_graphics::prelude::DrawTarget;
+use embedded_graphics::prelude::{DrawTarget, WebColors};
 use embedded_graphics::primitives::{Line, PrimitiveStyleBuilder, Rectangle, StyledDrawable};
 use embedded_graphics_web_simulator::{
     display::WebSimulatorDisplay, output_settings::OutputSettingsBuilder,
@@ -44,7 +44,7 @@ fn polar(circle: &Circle, angle: f32, radius_delta: i32) -> Point {
 }
 // Converts an rpm into an angle in radians.
 fn rpm_to_angle(rpm: u32) -> f32 {
-    (rpm as f32 / 1000f32) * 2.0 * PI
+    (rpm as f32 / 800f32) * 2.0 * PI
 }
 /// Creates a centered circle for the clock face.
 fn create_face(target: &impl DrawTarget) -> Circle {
@@ -109,7 +109,7 @@ pub fn main_js() -> Result<(), JsValue> {
     body.set_inner_html(
         r#"
     <header>
-    EcoCar Sally Dashboard Preview
+    EcoCar Sally Dashboard Preview (WIP)
   </header>
 
   <div id="running-mode" class="display">
@@ -550,12 +550,12 @@ pub fn main_js() -> Result<(), JsValue> {
         .pixel_spacing(0)
         .build();
 
-    let mut startup_display: WebSimulatorDisplay<Rgb666> = WebSimulatorDisplay::new(
+    let mut _startup_display: WebSimulatorDisplay<Rgb666> = WebSimulatorDisplay::new(
         (DISPLAY_WIDTH, DISPLAY_HEIGHT),
         &output_settings,
         document.get_element_by_id("startup-mode").as_ref(),
     );
-    let mut standby_display: WebSimulatorDisplay<Rgb666> = WebSimulatorDisplay::new(
+    let mut _standby_display: WebSimulatorDisplay<Rgb666> = WebSimulatorDisplay::new(
         (DISPLAY_WIDTH, DISPLAY_HEIGHT),
         &output_settings,
         document.get_element_by_id("standby-mode").as_ref(),
@@ -579,27 +579,21 @@ pub fn main_js() -> Result<(), JsValue> {
         .inactive_segment_color(Rgb666::BLACK)
         .build();
     let fill_white = PrimitiveStyle::with_fill(Rgb666::WHITE);
-    let loading_style = PrimitiveStyleBuilder::new()
+    let loading_border_style = PrimitiveStyleBuilder::new()
         .stroke_color(Rgb666::BLACK)
         .stroke_width(2)
-        .fill_color(Rgb666::GREEN)
         .build();
-
-    // let mut i = 0;
-    // loop {
-    //     Text::new(format!("{}", i % 100).as_str(), Point::new(200, 200), style)
-    //         .draw(&mut running_display)
-    //         .unwrap();
-    //     i += 1;
-
-    //     // Flush Displays
-    //     startup_display.flush().expect("could not flush buffer");
-    //     standby_display.flush().expect("could not flush buffer");
-    //     charging_display.flush().expect("could not flush buffer");
-    //     running_display.flush().expect("could not flush buffer");
-
-    //     sleep(Duration::from_millis(20));
-    // }
+    let loading_static_text_style = MonoTextStyle::new(&FONT_10X20, Rgb666::BLACK);
+    let loading_bar_style = PrimitiveStyleBuilder::new()
+        .fill_color(Rgb666::CSS_SEA_GREEN)
+        .build();
+    let loading_text_style = SevenSegmentStyleBuilder::new()
+        .digit_size(Size::new(10, 20))
+        .digit_spacing(4) // 5px spacing between digits
+        .segment_width(2) // 5px wide segments
+        .segment_color(Rgb666::BLACK) // active segments are green
+        .inactive_segment_color(Rgb666::WHITE)
+        .build();
 
     // Here we want to call `requestAnimationFrame` in a loop, but only a fixed
     // number of times. After it's done we want all our resources cleaned up. To
@@ -663,19 +657,20 @@ pub fn main_js() -> Result<(), JsValue> {
         let tac_speed = 0.07f32;
         let old_tac_stick = polar(&tac, tac_pos - tac_speed, -10);
         Line::new(tac.center(), old_tac_stick)
-            .into_styled(PrimitiveStyle::with_stroke(Rgb666::BLACK, 4))
+            .into_styled(PrimitiveStyle::with_stroke(Rgb666::BLACK, 3))
             .draw(&mut running_display)
             .unwrap();
         let tac_stick = polar(&tac, tac_pos, -10);
         Line::new(tac.center(), tac_stick)
-            .into_styled(PrimitiveStyle::with_stroke(Rgb666::RED, 4))
+            .into_styled(PrimitiveStyle::with_stroke(Rgb666::RED, 3))
             .draw(&mut running_display)
             .unwrap();
 
         // Render Tacometer Lines
-        for angle in (0..8 * 100).step_by(100).map(rpm_to_angle) {
+        // 1000 rpm lines
+        for angle in (0..7 * 100).step_by(100).map(rpm_to_angle) {
             // Start point on circumference.
-            let start = polar(&tac, angle, 10);
+            let start = polar(&tac, angle, 12);
 
             // End point offset by 10 pixels from the edge.
             let end = polar(&tac, angle, -12);
@@ -685,7 +680,8 @@ pub fn main_js() -> Result<(), JsValue> {
                 .draw(&mut running_display)
                 .unwrap();
         }
-        for angle in (0..7 * 100).step_by(20).map(rpm_to_angle) {
+        // 100rpm lines
+        for angle in (0..6 * 100).step_by(10).map(rpm_to_angle) {
             // Start point on circumference.
             let start = polar(&tac, angle, 9);
 
@@ -694,6 +690,19 @@ pub fn main_js() -> Result<(), JsValue> {
 
             Line::new(start, end)
                 .into_styled(PrimitiveStyle::with_stroke(Rgb666::WHITE, 1))
+                .draw(&mut running_display)
+                .unwrap();
+        }
+        // 500rpm lines
+        for angle in (0..6 * 100).step_by(50).map(rpm_to_angle) {
+            // Start point on circumference.
+            let start = polar(&tac, angle, 9);
+
+            // End point offset by 10 pixels from the edge.
+            let end = polar(&tac, angle, -8);
+
+            Line::new(start, end)
+                .into_styled(PrimitiveStyle::with_stroke(Rgb666::WHITE, 3))
                 .draw(&mut running_display)
                 .unwrap();
         }
@@ -721,10 +730,44 @@ pub fn main_js() -> Result<(), JsValue> {
             nyan_frames[i as usize % nyan_frames.len()],
         )
         .unwrap();
-        let loading_bar = Rectangle::new(Point::new(40, 240), Size::new(360, 20));
-        loading_bar
-            .draw_styled(&loading_style, &mut charging_display)
+
+        let loading_bar_border = Rectangle::new(
+            Point::new(
+                (charging_display.bounding_box().size.width as f32 * 0.1) as i32,
+                charging_display.bounding_box().size.height as i32 - 80,
+            ),
+            Size::new(
+                (charging_display.bounding_box().size.width as f32 * 0.8) as u32,
+                20,
+            ),
+        );
+        loading_bar_border
+            .draw_styled(&loading_border_style, &mut charging_display)
             .unwrap();
+        let loading_bar = loading_bar_border.resized_width(
+            (loading_bar_border.bounding_box().size.width as f32 * i as f32 / NUM_ITER as f32)
+                as u32,
+            embedded_graphics::geometry::AnchorX::Left,
+        );
+        loading_bar
+            .draw_styled(&loading_bar_style, &mut charging_display)
+            .unwrap();
+
+        Text::new(
+            format!("{}", (i as f32 / NUM_ITER as f32 * 48f32) as u32).as_str(),
+            Point::new(charging_display.bounding_box().center().x - 20, 200),
+            loading_text_style,
+        )
+        .draw(&mut charging_display)
+        .unwrap();
+
+        Text::new(
+            "/ 48 V",
+            Point::new(charging_display.bounding_box().center().x + 20, 200),
+            loading_static_text_style,
+        )
+        .draw(&mut charging_display)
+        .unwrap();
 
         charging_display.flush().expect("could not flush buffer");
 
