@@ -657,12 +657,12 @@ pub fn main_js() -> Result<(), JsValue> {
         let start_angle = 80;
         let tac_speed = 0.07f32;
         let corrected_tac_pos = tac_pos - 100f32;
-        let old_tac_stick = polar(&tac, corrected_tac_pos - tac_speed, -10);
+        let old_tac_stick = polar(&tac, corrected_tac_pos - tac_speed, -12);
         Line::new(tac.center(), old_tac_stick)
             .into_styled(PrimitiveStyle::with_stroke(Rgb666::BLACK, 3))
             .draw(&mut running_display)
             .unwrap();
-        let tac_stick = polar(&tac, corrected_tac_pos + tac_speed, -10);
+        let tac_stick = polar(&tac, corrected_tac_pos + tac_speed, -12);
         Line::new(tac.center(), tac_stick)
             .into_styled(PrimitiveStyle::with_stroke(Rgb666::RED, 3))
             .draw(&mut running_display)
@@ -678,6 +678,7 @@ pub fn main_js() -> Result<(), JsValue> {
 
         // Render Tacometer Lines
         // 1000 rpm lines
+        let mut j = 0;
         for angle in (start_angle..7 * 100).step_by(100).map(rpm_to_angle) {
             // Start point on circumference.
             let start = polar(&tac, angle, 12);
@@ -685,10 +686,23 @@ pub fn main_js() -> Result<(), JsValue> {
             // End point offset by 10 pixels from the edge.
             let end = polar(&tac, angle, -12);
 
+            let text_pos = polar(&tac, angle, -20);
+
             Line::new(start, end)
                 .into_styled(PrimitiveStyle::with_stroke(Rgb666::WHITE, 4))
                 .draw(&mut running_display)
                 .unwrap();
+
+            Text::with_alignment(
+                format!("{}", j).as_str(),
+                text_pos,
+                MonoTextStyle::new(&FONT_10X20, Rgb666::WHITE),
+                embedded_graphics::text::Alignment::Center,
+            )
+            .draw(&mut running_display)
+            .unwrap();
+
+            j += 1;
         }
         // 100rpm lines
         for angle in (start_angle..7 * 100 - 10).step_by(10).map(rpm_to_angle) {
@@ -763,10 +777,11 @@ pub fn main_js() -> Result<(), JsValue> {
             .draw_styled(&loading_bar_style, &mut charging_display)
             .unwrap();
 
-        Text::new(
+        Text::with_alignment(
             format!("{}", (i as f32 / NUM_ITER as f32 * 48f32) as u32).as_str(),
-            Point::new(charging_display.bounding_box().center().x - 20, 200),
+            Point::new(charging_display.bounding_box().center().x, 200),
             loading_text_style,
+            embedded_graphics::text::Alignment::Right,
         )
         .draw(&mut charging_display)
         .unwrap();
