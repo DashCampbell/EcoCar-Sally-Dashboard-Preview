@@ -2,6 +2,7 @@
 # will have compiled files and executables
 debug
 Cargo.lock
+notes/*
 
 # Ignore everything inside target/ except sally_dashboard_preview/
 target/*

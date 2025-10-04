@@ -3,6 +3,9 @@
 Preview accessed here:
 https://dashcampbell.github.io/EcoCar-Sally-Dashboard-Preview/
 
+For a more comprehensive overview, see the design architecture:
+https://miro.com/app/board/uXjVJLxO6GU=/
+
 Preview of what the dashboard will look like for Sally. Currently a work in progress. The dashboard
 will have at least 4 states. Running, Charging, Standby and Startup mode.
 
