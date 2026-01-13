@@ -21,7 +21,7 @@ lto = true
 [dependencies]
 # The `wasm-bindgen` crate provides the bare minimum functionality needed
 # to interact with JavaScript.
-wasm-bindgen = "0.2.45"
+wasm-bindgen = "0.2.106"
 wasm-timer = "0.2.5"
 embedded-graphics-web-simulator = "0.4.0"
 console_error_panic_hook = "0.1.5"
