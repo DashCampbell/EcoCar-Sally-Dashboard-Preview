@@ -28,6 +28,8 @@ use embedded_graphics::{
     primitives::{Circle, PrimitiveStyle},
 };
 
+type DisplayDevice = WebSimulatorDisplay<Rgb666>;
+
 fn window() -> web_sys::Window {
     web_sys::window().expect("no global `window` exists")
 }
@@ -151,22 +153,22 @@ pub fn main_js() -> Result<(), JsValue> {
         .pixel_spacing(0)
         .build();
 
-    let mut startup_display: WebSimulatorDisplay<Rgb666> = WebSimulatorDisplay::new(
+    let mut startup_display: DisplayDevice = WebSimulatorDisplay::new(
         (DISPLAY_WIDTH, DISPLAY_HEIGHT),
         &output_settings,
         document.get_element_by_id("startup-mode").as_ref(),
     );
-    let mut standby_display: WebSimulatorDisplay<Rgb666> = WebSimulatorDisplay::new(
+    let mut standby_display: DisplayDevice = WebSimulatorDisplay::new(
         (DISPLAY_WIDTH, DISPLAY_HEIGHT),
         &output_settings,
         document.get_element_by_id("standby-mode").as_ref(),
     );
-    let mut charging_display: WebSimulatorDisplay<Rgb666> = WebSimulatorDisplay::new(
+    let mut charging_display: DisplayDevice = WebSimulatorDisplay::new(
         (DISPLAY_WIDTH, DISPLAY_HEIGHT),
         &output_settings,
         document.get_element_by_id("charging-mode").as_ref(),
     );
-    let mut running_display: WebSimulatorDisplay<Rgb666> = WebSimulatorDisplay::new(
+    let mut running_display: DisplayDevice = WebSimulatorDisplay::new(
         (DISPLAY_WIDTH, DISPLAY_HEIGHT),
         &output_settings,
         document.get_element_by_id("running-mode").as_ref(),
@@ -200,6 +202,12 @@ pub fn main_js() -> Result<(), JsValue> {
 
     let mut i = 0;
     const NUM_ITER: i32 = 60;
+
+    // Initial Frame
+    let _ = startup_display.clear(Rgb666::BLACK);
+    let _ = standby_display.clear(Rgb666::BLACK);
+    let _ = charging_display.clear(Rgb666::BLACK);
+    let _ = running_display.clear(Rgb666::BLACK);
 
     // Rendering Loop
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
