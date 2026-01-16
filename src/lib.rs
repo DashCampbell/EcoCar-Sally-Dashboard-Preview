@@ -1,4 +1,3 @@
-use core::f32::consts::PI;
 use embedded_graphics::prelude::DrawTarget;
 use embedded_graphics::primitives::{Rectangle, StyledDrawable};
 use embedded_graphics_web_simulator::{
@@ -14,10 +13,7 @@ pub mod running;
 pub mod standby;
 pub mod startup;
 
-use crate::assets::{
-    epd_bitmap_nyan1, epd_bitmap_nyan2, epd_bitmap_nyan3, epd_bitmap_nyan4, epd_bitmap_nyan5,
-    epd_bitmap_nyan6,
-};
+// use crate::assets::*;
 use crate::charging::charging_gui;
 use crate::running::running_gui;
 use crate::standby::standby_gui;
@@ -25,10 +21,12 @@ use crate::startup::startup_gui;
 use embedded_graphics::{
     pixelcolor::Rgb666,
     prelude::{Point, RgbColor, Size},
-    primitives::{Circle, PrimitiveStyle},
+    primitives::PrimitiveStyle,
 };
 
 type DisplayDevice = WebSimulatorDisplay<Rgb666>;
+const DISPLAY_WIDTH: u32 = 480;
+const DISPLAY_HEIGHT: u32 = 320;
 
 fn window() -> web_sys::Window {
     web_sys::window().expect("no global `window` exists")
@@ -39,34 +37,8 @@ fn request_animation_frame(f: &Closure<dyn FnMut()>) {
         .request_animation_frame(f.as_ref().unchecked_ref())
         .expect("should register `requestAnimationFrame` OK");
 }
-/// Converts a polar coordinate (angle/distance) into an (X, Y) coordinate centered around the
-/// center of the circle.
-///
-/// The angle is relative to the 12 o'clock position and the radius is relative to the edge of the
-/// clock face.
-fn polar(circle: &Circle, angle: f32, radius_delta: i32) -> Point {
-    let radius = circle.diameter as f32 / 2.0 + radius_delta as f32;
-    let angle = angle + PI;
-    circle.center()
-        + Point::new(
-            (angle.sin() * radius) as i32,
-            -(angle.cos() * radius) as i32,
-        )
-}
-// Converts an rpm into an angle in radians.
-fn rpm_to_angle(rpm: u32) -> f32 {
-    (rpm as f32 / 900f32) * 2.0 * PI
-}
-/// Creates a centered circle for the clock face.
-fn create_face(target: &impl DrawTarget) -> Circle {
-    // The draw target bounding box can be used to determine the size of the display.
-    let bounding_box = target.bounding_box();
 
-    let diameter = bounding_box.size.width.min(bounding_box.size.height) - 2 * 15;
-
-    Circle::with_center(bounding_box.center(), diameter)
-}
-fn render_rgb565_image<D>(
+fn _render_rgb565_image<D>(
     display: &mut D,
     x0: u16,
     y0: u16,
@@ -140,13 +112,10 @@ pub fn main_js() -> Result<(), JsValue> {
   </div>
   
   <footer>
-  <p>Source: <a href="https://github.com/DashCampbell/EcoCar-Sally-Dashboard-Preview">https://github.com/DashCampbell/EcoCar-Sally-Dashboard-Preview</a></p>
+  <p>Source Code: <a href="https://github.com/DashCampbell/EcoCar-Sally-Dashboard-Preview">https://github.com/DashCampbell/EcoCar-Sally-Dashboard-Preview</a></p>
   </footer>
     "#,
     );
-
-    const DISPLAY_WIDTH: u32 = 480;
-    const DISPLAY_HEIGHT: u32 = 320;
 
     let output_settings = OutputSettingsBuilder::new()
         .scale(1)
@@ -175,14 +144,14 @@ pub fn main_js() -> Result<(), JsValue> {
     );
 
     // Array of all bitmaps for convenience. (Total bytes used to store images in PROGMEM = 4416)
-    let _nyan_frames = [
-        &epd_bitmap_nyan1,
-        &epd_bitmap_nyan2,
-        &epd_bitmap_nyan3,
-        &epd_bitmap_nyan4,
-        &epd_bitmap_nyan5,
-        &epd_bitmap_nyan6,
-    ];
+    // let _nyan_frames = [
+    //     &epd_bitmap_nyan1,
+    //     &epd_bitmap_nyan2,
+    //     &epd_bitmap_nyan3,
+    //     &epd_bitmap_nyan4,
+    //     &epd_bitmap_nyan5,
+    //     &epd_bitmap_nyan6,
+    // ];
 
     // Here we want to call `requestAnimationFrame` in a loop, but only a fixed
     // number of times. After it's done we want all our resources cleaned up. To
@@ -200,8 +169,9 @@ pub fn main_js() -> Result<(), JsValue> {
     let f = Rc::new(RefCell::new(None));
     let g = f.clone();
 
-    let mut i = 0;
-    const NUM_ITER: i32 = 60;
+    let mut i = 10;
+    let mut increase_index = true;
+    const NUM_ITER: i32 = 99;
 
     // Initial Frame
     let _ = startup_display.clear(Rgb666::BLACK);
@@ -214,20 +184,30 @@ pub fn main_js() -> Result<(), JsValue> {
         startup_gui(&mut startup_display);
         standby_gui(&mut standby_display);
         charging_gui(&mut charging_display);
-        running_gui(&mut running_display);
+        running_gui(&mut running_display, i);
 
         startup_display.flush().expect("could not flush buffer");
         standby_display.flush().expect("could not flush buffer");
         charging_display.flush().expect("could not flush buffer");
         running_display.flush().expect("could not flush buffer");
 
-        i += 1;
-        if i > NUM_ITER {
-            // Drop our handle to this closure so that it will get cleaned
-            // up once we return.
-            let _ = f.borrow_mut().take();
-            return;
+        if increase_index {
+            i += 1;
+        } else {
+            i -= 1;
         }
+        if i > NUM_ITER as u32 {
+            i = NUM_ITER as u32;
+            increase_index = false;
+        } else if i <= 10 {
+            increase_index = true;
+        }
+        // if i > NUM_ITER {
+        //     // Drop our handle to this closure so that it will get cleaned
+        //     // up once we return.
+        //     let _ = f.borrow_mut().take();
+        //     return;
+        // }
         // Schedule ourself for another requestAnimationFrame callback.
         request_animation_frame(f.borrow().as_ref().unwrap());
     }) as Box<dyn FnMut()>));
