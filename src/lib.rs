@@ -27,6 +27,7 @@ use embedded_graphics::{
 type DisplayDevice = WebSimulatorDisplay<Rgb666>;
 const DISPLAY_WIDTH: u32 = 480;
 const DISPLAY_HEIGHT: u32 = 320;
+const CENTER_POINT: Point = Point::new(DISPLAY_WIDTH as i32 / 2, DISPLAY_HEIGHT as i32 / 2);
 
 fn window() -> web_sys::Window {
     web_sys::window().expect("no global `window` exists")
@@ -179,14 +180,15 @@ pub fn main_js() -> Result<(), JsValue> {
     let _ = charging_display.clear(Rgb666::BLACK);
     let _ = running_display.clear(Rgb666::BLACK);
 
+    startup_gui(&mut startup_display);
+    startup_display.flush().expect("could not flush buffer");
+
     // Rendering Loop
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-        startup_gui(&mut startup_display);
         standby_gui(&mut standby_display);
-        charging_gui(&mut charging_display);
+        charging_gui(&mut charging_display, i);
         running_gui(&mut running_display, i);
 
-        startup_display.flush().expect("could not flush buffer");
         standby_display.flush().expect("could not flush buffer");
         charging_display.flush().expect("could not flush buffer");
         running_display.flush().expect("could not flush buffer");

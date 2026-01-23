@@ -15,9 +15,7 @@ use embedded_graphics::{
     Drawable,
 };
 
-use crate::{DisplayDevice, DISPLAY_HEIGHT, DISPLAY_WIDTH};
-
-const CENTER_POINT: Point = Point::new(DISPLAY_WIDTH as i32 / 2, DISPLAY_HEIGHT as i32 / 2);
+use crate::{DisplayDevice, CENTER_POINT, DISPLAY_HEIGHT, DISPLAY_WIDTH};
 
 fn render_speed_widgets(display: &mut DisplayDevice, speed: i32) {
     // Define Styles
@@ -188,10 +186,10 @@ fn render_battery_gui(display: &mut DisplayDevice, battery_health: u8) {
         .digit_size(Size::new(batt_font_width, batt_font_height))
         .digit_spacing(2) // 5px spacing between digits
         .segment_width(2) // 5px wide segments
-        .segment_color(Rgb666::GREEN) // active segments are green
+        .segment_color(Rgb666::WHITE) // active segments are green
         .inactive_segment_color(Rgb666::BLACK)
         .build();
-    let batt_unit_style = MonoTextStyle::new(&FONT_10X20, Rgb666::GREEN);
+    let batt_unit_style = MonoTextStyle::new(&FONT_10X20, Rgb666::WHITE);
 
     bat_tip.draw_styled(&tip_style, display).unwrap();
     batt_outline.draw_styled(&outline_style, display).unwrap();
