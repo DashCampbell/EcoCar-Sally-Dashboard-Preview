@@ -100,16 +100,16 @@ pub fn main_js() -> Result<(), JsValue> {
   <h4>Running Mode</h4>
   </div>
   
+  <div id="standby-mode" class="display">
+  <h4>Standby Mode</h4>
+  </div>
+
   <div id="charging-mode" class="display">
   <h4>Charging Mode</h4>
   </div>
   
   <div id="startup-mode" class="display">
   <h4>Startup Mode</h4>
-  </div>
-
-  <div id="standby-mode" class="display">
-  <h4>Standby Mode</h4>
   </div>
   
   <footer>
@@ -185,7 +185,7 @@ pub fn main_js() -> Result<(), JsValue> {
 
     // Rendering Loop
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-        standby_gui(&mut standby_display);
+        standby_gui(&mut standby_display, i);
         charging_gui(&mut charging_display, i);
         running_gui(&mut running_display, i);
 
