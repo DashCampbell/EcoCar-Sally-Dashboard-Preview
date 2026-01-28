@@ -15,7 +15,7 @@ pub mod startup;
 
 // use crate::assets::*;
 use crate::charging::{charging_gui, init_render_charging_gui};
-use crate::running::running_gui;
+use crate::running::{init_render_running_gui, running_gui};
 use crate::standby::standby_gui;
 use crate::startup::startup_gui;
 use embedded_graphics::{
@@ -179,6 +179,9 @@ pub fn main_js() -> Result<(), JsValue> {
     let _ = standby_display.clear(Rgb666::BLACK);
     let _ = charging_display.clear(Rgb666::BLACK);
     let _ = running_display.clear(Rgb666::BLACK);
+
+    init_render_running_gui(&mut running_display);
+    running_display.flush().expect("could not flush buffer");
 
     startup_gui(&mut startup_display);
     startup_display.flush().expect("could not flush buffer");

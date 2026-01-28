@@ -17,43 +17,30 @@ use embedded_graphics::{
 
 use crate::{DisplayDevice, CENTER_POINT, DISPLAY_HEIGHT, DISPLAY_WIDTH};
 
+const SPEED_FONT_WIDTH: u32 = 27;
+const SPEED_FONT_HEIGHT: u32 = 63;
+
+const EFF_FONT_WIDTH: u32 = 15;
+const EFF_FONT_HEIGHT: u32 = 25;
+const EFF_POS: Point = Point::new(50, DISPLAY_HEIGHT as i32 - 50);
+
+const BATT_WIDTH: u32 = 16;
+const BATT_HEIGHT: u32 = 40;
+const BATT_POS: Point = Point::new(DISPLAY_WIDTH as i32 - 40, DISPLAY_HEIGHT as i32 - 60);
+
 fn render_speed_widgets(display: &mut DisplayDevice, speed: i32) {
-    // Define Styles
-    let speed_font_width = 27;
-    let speed_font_height = 63;
     let speed_style = SevenSegmentStyleBuilder::new()
-        .digit_size(Size::new(speed_font_width, speed_font_height))
-        .digit_spacing(4) // 5px spacing between digits
-        .segment_width(6) // 5px wide segments
-        .segment_color(Rgb666::RED) // active segments are green
+        .digit_size(Size::new(SPEED_FONT_WIDTH, SPEED_FONT_HEIGHT))
+        .digit_spacing(4)
+        .segment_width(6)
+        .segment_color(Rgb666::RED)
         .inactive_segment_color(Rgb666::BLACK)
         .build();
 
-    let speed_unit_style = MonoTextStyle::new(&FONT_10X20, Rgb666::RED);
-    let speed_circle_style = PrimitiveStyleBuilder::new()
-        .stroke_color(Rgb666::CSS_FIRE_BRICK)
-        .stroke_width(5)
-        .stroke_alignment(StrokeAlignment::Outside)
-        .build();
-
-    // Static Text
-    Circle::with_center(CENTER_POINT, 120)
-        .draw_styled(&speed_circle_style, display)
-        .unwrap();
-    // Render Speed Unit
-    Text::with_alignment(
-        "km/h",
-        CENTER_POINT + Point::new(0, speed_font_height as i32 / 2 + 15),
-        speed_unit_style,
-        Alignment::Center,
-    )
-    .draw(display)
-    .unwrap();
-
-    // Dynamic Text
+    // Render Speed value
     Text::with_alignment(
         format!("{}", speed).as_str(),
-        CENTER_POINT + Point::new(speed_font_width as i32, speed_font_height as i32 / 2),
+        CENTER_POINT + Point::new(SPEED_FONT_WIDTH as i32, SPEED_FONT_HEIGHT as i32 / 2),
         speed_style,
         Alignment::Right,
     )
@@ -110,42 +97,18 @@ fn render_tach_widgets(display: &mut DisplayDevice, rpm: u32) {
 }
 
 fn render_efficiency_gui(display: &mut DisplayDevice, efficiency: u8) {
-    let eff_font_width = 15;
-    let eff_font_height = 25;
     let eff_style = SevenSegmentStyleBuilder::new()
-        .digit_size(Size::new(eff_font_width, eff_font_height))
-        .digit_spacing(2) // 5px spacing between digits
-        .segment_width(3) // 5px wide segments
-        .segment_color(Rgb666::GREEN) // active segments are green
+        .digit_size(Size::new(EFF_FONT_WIDTH, EFF_FONT_HEIGHT))
+        .digit_spacing(2)
+        .segment_width(3)
+        .segment_color(Rgb666::GREEN)
         .inactive_segment_color(Rgb666::BLACK)
         .build();
-    let eff_unit_style = MonoTextStyle::new(&FONT_10X20, Rgb666::GREEN);
-
-    let eff_pos = Point::new(50, DISPLAY_HEIGHT as i32 - 50);
-    let eff_circle_style = PrimitiveStyleBuilder::new()
-        .stroke_color(Rgb666::GREEN)
-        .stroke_width(4)
-        .stroke_alignment(StrokeAlignment::Outside)
-        .build();
-
-    // Static Text
-    Circle::with_center(eff_pos, 70)
-        .draw_styled(&eff_circle_style, display)
-        .unwrap();
-    // Render %
-    Text::with_alignment(
-        "%",
-        eff_pos + Point::new(eff_font_width as i32 + 2, eff_font_height as i32 / 2),
-        eff_unit_style,
-        Alignment::Left,
-    )
-    .draw(display)
-    .unwrap();
 
     // Render Efficiency
     Text::with_alignment(
         format!("{}", efficiency).as_str(),
-        eff_pos + Point::new(eff_font_width as i32, eff_font_height as i32 / 2),
+        EFF_POS + Point::new(EFF_FONT_WIDTH as i32, EFF_FONT_HEIGHT as i32 / 2),
         eff_style,
         Alignment::Right,
     )
@@ -154,67 +117,125 @@ fn render_efficiency_gui(display: &mut DisplayDevice, efficiency: u8) {
 }
 
 fn render_battery_gui(display: &mut DisplayDevice, battery_health: u8) {
-    let batt_height = 40;
-    let batt_pos = Point::new(DISPLAY_WIDTH as i32 - 40, DISPLAY_HEIGHT as i32 - 60);
-    let batt_outline = Rectangle::new(batt_pos, Size::new(16, batt_height));
-    let bat_tip_width = 12;
-    let bat_tip_height = 8;
-    let bat_tip = Rectangle::new(
-        batt_pos + Point::new((16 - bat_tip_width) / 2, -bat_tip_height),
-        Size::new(bat_tip_width as u32, bat_tip_height as u32),
-    );
-    let batt_fill = Rectangle::with_corners(
-        batt_pos
-            + Point::new(
-                0,
-                ((100 - battery_health) as f32 / 100f32 * batt_height as f32) as i32,
-            ),
-        batt_pos + Size::new(15, batt_height),
-    );
-    let outline_style = PrimitiveStyleBuilder::new()
-        .stroke_alignment(StrokeAlignment::Outside)
-        .stroke_color(Rgb666::WHITE)
-        .stroke_width(4)
-        .build();
     let clear_style = PrimitiveStyle::with_fill(Rgb666::BLACK);
     let fill_style = PrimitiveStyle::with_fill(Rgb666::GREEN);
-    let tip_style = PrimitiveStyle::with_fill(Rgb666::WHITE);
 
     let batt_font_width = 10;
     let batt_font_height = 20;
+
     let batt_text_style = SevenSegmentStyleBuilder::new()
         .digit_size(Size::new(batt_font_width, batt_font_height))
-        .digit_spacing(2) // 5px spacing between digits
-        .segment_width(2) // 5px wide segments
-        .segment_color(Rgb666::WHITE) // active segments are green
+        .digit_spacing(2)
+        .segment_width(2)
+        .segment_color(Rgb666::WHITE)
         .inactive_segment_color(Rgb666::BLACK)
         .build();
-    let batt_unit_style = MonoTextStyle::new(&FONT_10X20, Rgb666::WHITE);
 
-    bat_tip.draw_styled(&tip_style, display).unwrap();
-    batt_outline.draw_styled(&outline_style, display).unwrap();
+    let battery_level = ((100 - battery_health) as f32 / 100f32 * BATT_HEIGHT as f32) as u32;
+
+    let batt_outline = Rectangle::new(BATT_POS, Size::new(BATT_WIDTH, battery_level));
+    let batt_fill = Rectangle::with_corners(
+        BATT_POS + Point::new(0, battery_level as i32),
+        BATT_POS + Size::new(BATT_WIDTH - 1, BATT_HEIGHT),
+    );
+
+    // Render Battery Rating
     batt_outline.draw_styled(&clear_style, display).unwrap();
     batt_fill.draw_styled(&fill_style, display).unwrap();
-
-    // Render %
-    Text::with_alignment(
-        "%",
-        batt_pos + Point::new(-8, 40),
-        batt_unit_style,
-        Alignment::Right,
-    )
-    .draw(display)
-    .unwrap();
 
     // Render Battery Percentage
     Text::with_alignment(
         format!("{}", battery_health).as_str(),
-        batt_pos + Point::new(-8 - 10, 40),
+        BATT_POS + Point::new(-8 - 10, 40),
         batt_text_style,
         Alignment::Right,
     )
     .draw(display)
     .unwrap();
+}
+
+fn init_render_speed_gui(display: &mut DisplayDevice) {
+    let speed_unit_style = MonoTextStyle::new(&FONT_10X20, Rgb666::RED);
+    let speed_circle_style = PrimitiveStyleBuilder::new()
+        .stroke_color(Rgb666::CSS_FIRE_BRICK)
+        .stroke_width(5)
+        .stroke_alignment(StrokeAlignment::Outside)
+        .build();
+
+    // Render Speed Circle
+    Circle::with_center(CENTER_POINT, 120)
+        .draw_styled(&speed_circle_style, display)
+        .unwrap();
+    // Render Speed Unit
+    Text::with_alignment(
+        "km/h",
+        CENTER_POINT + Point::new(0, SPEED_FONT_HEIGHT as i32 / 2 + 15),
+        speed_unit_style,
+        Alignment::Center,
+    )
+    .draw(display)
+    .unwrap();
+}
+
+fn init_render_efficiency_gui(display: &mut DisplayDevice) {
+    let eff_unit_style = MonoTextStyle::new(&FONT_10X20, Rgb666::GREEN);
+    let eff_circle_style = PrimitiveStyleBuilder::new()
+        .stroke_color(Rgb666::GREEN)
+        .stroke_width(4)
+        .stroke_alignment(StrokeAlignment::Outside)
+        .build();
+    // Render Efficiency Circle
+    Circle::with_center(EFF_POS, 70)
+        .draw_styled(&eff_circle_style, display)
+        .unwrap();
+    // Render Efficiency %
+    Text::with_alignment(
+        "%",
+        EFF_POS + Point::new(EFF_FONT_WIDTH as i32 + 2, EFF_FONT_HEIGHT as i32 / 2),
+        eff_unit_style,
+        Alignment::Left,
+    )
+    .draw(display)
+    .unwrap();
+}
+
+fn init_render_battery_gui(display: &mut DisplayDevice) {
+    let bat_tip_width = 12;
+    let bat_tip_height = 8;
+
+    let bat_tip = Rectangle::new(
+        BATT_POS + Point::new((BATT_WIDTH as i32 - bat_tip_width) / 2, -bat_tip_height),
+        Size::new(bat_tip_width as u32, bat_tip_height as u32),
+    );
+    let batt_outline = Rectangle::new(BATT_POS, Size::new(BATT_WIDTH, BATT_HEIGHT));
+
+    let outline_style = PrimitiveStyleBuilder::new()
+        .stroke_alignment(StrokeAlignment::Outside)
+        .stroke_color(Rgb666::WHITE)
+        .stroke_width(4)
+        .build();
+    let tip_style = PrimitiveStyle::with_fill(Rgb666::WHITE);
+    let batt_unit_style = MonoTextStyle::new(&FONT_10X20, Rgb666::WHITE);
+
+    // Render Battery Tip
+    bat_tip.draw_styled(&tip_style, display).unwrap();
+    // Render Battery Border
+    batt_outline.draw_styled(&outline_style, display).unwrap();
+    // Render Battey %
+    Text::with_alignment(
+        "%",
+        BATT_POS + Point::new(-8, 40),
+        batt_unit_style,
+        Alignment::Right,
+    )
+    .draw(display)
+    .unwrap();
+}
+
+pub fn init_render_running_gui(display: &mut DisplayDevice) {
+    init_render_speed_gui(display);
+    init_render_efficiency_gui(display);
+    init_render_battery_gui(display);
 }
 
 pub fn running_gui(display: &mut DisplayDevice, frame_index: u32) {
