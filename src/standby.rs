@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 /* Canbus values to render
 pub static RELAY_STATE: Mutex<ThreadModeRawMutex, RelayState> = Mutex::new(RelayState::RELAY_STRTP);
@@ -77,8 +77,8 @@ pub static RELAY_MOTOR_PACK: Mutex<ThreadModeRawMutex, FDCAN_RelPackMtr_t> =
     }); */
 use crate::{DisplayDevice, CENTER_POINT};
 use eg_seven_segment::SevenSegmentStyleBuilder;
-use embedded_graphics::mono_font::iso_8859_1::{FONT_8X13, FONT_9X15};
-use embedded_graphics::mono_font::MonoTextStyle;
+use embedded_graphics::mono_font::iso_8859_1::FONT_9X15;
+use embedded_graphics::mono_font::{MonoFont, MonoTextStyle};
 use embedded_graphics::{
     pixelcolor::Rgb666,
     prelude::*,
@@ -89,101 +89,115 @@ use embedded_graphics::{
 const MAX_ROWS_PER_COLUMN: i32 = 16;
 static CURRENT_ROW: Mutex<i32> = Mutex::new(0);
 
-fn render_can_value(field: &str, value: u32, display: &mut DisplayDevice) {
+fn render_can_value(field: &str, value: u32, render_field_name: bool, display: &mut DisplayDevice) {
     let value = format!("{}", value);
-    let field = format!("{}: ", field);
 
-    let font = FONT_9X15;
-    let font_width = font.character_size.width;
-    let font_height = font.character_size.height;
+    const CAN_FONT: MonoFont<'static> = FONT_9X15;
+    const FONT_WIDTH: u32 = CAN_FONT.character_size.width;
+    const FONT_HEIGHT: u32 = CAN_FONT.character_size.height;
 
     let number_style = SevenSegmentStyleBuilder::new()
-        .digit_size(Size::new(font_width, font_height))
+        .digit_size(Size::new(FONT_WIDTH, FONT_HEIGHT))
         .digit_spacing(2)
         .segment_width(1)
         .segment_color(Rgb666::WHITE)
         .inactive_segment_color(Rgb666::BLACK)
         .build();
-    let text_style = MonoTextStyle::new(&font, Rgb666::WHITE);
+
     let mut row = CURRENT_ROW.lock().unwrap();
     let col = if *row >= MAX_ROWS_PER_COLUMN { 1 } else { 0 };
 
     let text_pos = Point::new(
-        font_width as i32 * 14 + col * CENTER_POINT.x,
-        20 + (font_height as i32 + 4) * (*row - col * MAX_ROWS_PER_COLUMN),
+        FONT_WIDTH as i32 * 12 + col * CENTER_POINT.x,
+        20 + (FONT_HEIGHT as i32 + 4) * (*row - col * MAX_ROWS_PER_COLUMN),
     );
+    let number_pos = text_pos + Point::new(13 * FONT_WIDTH as i32, 0);
 
-    // Rendering
-    let text = Text::with_alignment(&field, text_pos, text_style, Alignment::Right);
-    text.draw(display).unwrap();
-    let number = Text::with_alignment(&value, text_pos, number_style, Alignment::Left);
+    // Render Field Value
+    let number = Text::with_alignment(&value, number_pos, number_style, Alignment::Right);
     number.draw(display).unwrap();
 
+    // Render Field Name
+    if render_field_name {
+        let field = format!("{}", field);
+        let text_style = MonoTextStyle::new(&CAN_FONT, Rgb666::WHITE);
+
+        // render field name
+        let text = Text::with_alignment(&field, text_pos, text_style, Alignment::Right);
+        text.draw(display).unwrap();
+
+        // render colon
+        let text = Text::with_alignment(":", text_pos, text_style, Alignment::Left);
+        text.draw(display).unwrap();
+    }
     // Increment Row number by one
     *row += 1;
 }
 
-pub fn standby_gui(display: &mut DisplayDevice, frame_index: u32) {
+/// Renders the display in Standby Mode
+///
+/// `render_field_name` - If true then render the field name of each canbus value
+pub fn standby_gui(display: &mut DisplayDevice, render_field_name: bool, frame_index: u32) {
     let mock_value = 1234567000 + frame_index;
 
     // RELAY_STATE
-    render_can_value("relay_state", mock_value, display);
+    render_can_value("relay_state", mock_value, render_field_name, display);
 
     // FET_DATA
-    render_can_value("fet_config", mock_value, display);
-    render_can_value("input_volt", mock_value, display);
-    render_can_value("cap_volt", mock_value, display);
-    render_can_value("cap_curr", mock_value, display);
-    render_can_value("res_curr", mock_value, display);
-    render_can_value("out_curr", mock_value, display);
+    render_can_value("fet_config", mock_value, render_field_name, display);
+    render_can_value("input_volt", mock_value, render_field_name, display);
+    render_can_value("cap_volt", mock_value, render_field_name, display);
+    render_can_value("cap_curr", mock_value, render_field_name, display);
+    render_can_value("res_curr", mock_value, render_field_name, display);
+    render_can_value("out_curr", mock_value, render_field_name, display);
 
     // FCC_PACK1_DATA
-    render_can_value("fc_press", mock_value, display);
-    render_can_value("fc_temp", mock_value, display);
+    render_can_value("fc_press", mock_value, render_field_name, display);
+    render_can_value("fc_temp", mock_value, render_field_name, display);
 
     // FCC_PACK2_DATA
-    render_can_value("fan_rpm1", mock_value, display);
-    render_can_value("fan_rpm2", mock_value, display);
+    render_can_value("fan_rpm1", mock_value, render_field_name, display);
+    render_can_value("fan_rpm2", mock_value, render_field_name, display);
 
     // // FCC_PACK3_DATA
-    // render_can_value("bme_temp", mock_value, display);
-    // render_can_value("bme_humid", mock_value, display);
+    // render_can_value("bme_temp", mock_value, render_field_name,display);
+    // render_can_value("bme_humid", mock_value, render_field_name,display);
 
     // H2_PACK1_DATA
-    render_can_value("h2_sense_1", mock_value, display);
-    render_can_value("h2_sense_2", mock_value, display);
-    render_can_value("h2_sense_3", mock_value, display);
-    render_can_value("h2_sense_4", mock_value, display);
+    render_can_value("h2_sense_1", mock_value, render_field_name, display);
+    render_can_value("h2_sense_2", mock_value, render_field_name, display);
+    render_can_value("h2_sense_3", mock_value, render_field_name, display);
+    render_can_value("h2_sense_4", mock_value, render_field_name, display);
 
     // H2_PACK2_DATA
-    render_can_value("bme_temp", mock_value, display);
-    render_can_value("bme_humid", mock_value, display);
-    render_can_value("imon_7v", mock_value, display);
-    render_can_value("imon_12v", mock_value, display);
+    render_can_value("bme_temp", mock_value, render_field_name, display);
+    render_can_value("bme_humid", mock_value, render_field_name, display);
+    render_can_value("imon_7v", mock_value, render_field_name, display);
+    render_can_value("imon_12v", mock_value, render_field_name, display);
 
     // BOOST_PACK1_DATA
-    render_can_value("in_curr", mock_value, display);
-    render_can_value("in_volt", mock_value, display);
+    render_can_value("in_curr", mock_value, render_field_name, display);
+    render_can_value("in_volt", mock_value, render_field_name, display);
 
     // BOOST_PACK2_DATA
-    render_can_value("out_curr", mock_value, display);
-    render_can_value("out_volt", mock_value, display);
+    render_can_value("out_curr", mock_value, render_field_name, display);
+    render_can_value("out_volt", mock_value, render_field_name, display);
 
     // BOOST_PACK3_DATA
-    render_can_value("efficiency", mock_value, display);
-    render_can_value("joules", mock_value, display);
+    render_can_value("efficiency", mock_value, render_field_name, display);
+    render_can_value("joules", mock_value, render_field_name, display);
 
     // REL_FC_PACK
-    render_can_value("fc_volt", mock_value, display);
-    render_can_value("fc_curr", mock_value, display);
+    render_can_value("fc_volt", mock_value, render_field_name, display);
+    render_can_value("fc_curr", mock_value, render_field_name, display);
 
     // REL_CAP_PACK
-    render_can_value("cap_volt", mock_value, display);
-    render_can_value("cap_curr", mock_value, display);
+    render_can_value("cap_volt", mock_value, render_field_name, display);
+    render_can_value("cap_curr", mock_value, render_field_name, display);
 
     // REL_MOTOR_PACK
-    render_can_value("mtr_volt", mock_value, display);
-    render_can_value("mtr_curr", mock_value, display);
+    render_can_value("mtr_volt", mock_value, render_field_name, display);
+    render_can_value("mtr_curr", mock_value, render_field_name, display);
 
     // Reset Row number after each frame
     let mut row = CURRENT_ROW.lock().unwrap();

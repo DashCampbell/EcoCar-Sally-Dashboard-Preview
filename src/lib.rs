@@ -186,9 +186,12 @@ pub fn main_js() -> Result<(), JsValue> {
     init_render_charging_gui(&mut charging_display);
     charging_display.flush().expect("could not flush buffer");
 
+    standby_gui(&mut standby_display, true, i);
+    standby_display.flush().expect("could not flush buffer");
+
     // Rendering Loop
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
-        standby_gui(&mut standby_display, i);
+        standby_gui(&mut standby_display, false, i);
         charging_gui(&mut charging_display, i);
         running_gui(&mut running_display, i);
 
