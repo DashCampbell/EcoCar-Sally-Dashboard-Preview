@@ -14,7 +14,7 @@ pub mod standby;
 pub mod startup;
 
 // use crate::assets::*;
-use crate::charging::charging_gui;
+use crate::charging::{charging_gui, init_render_charging_gui};
 use crate::running::running_gui;
 use crate::standby::standby_gui;
 use crate::startup::startup_gui;
@@ -182,6 +182,9 @@ pub fn main_js() -> Result<(), JsValue> {
 
     startup_gui(&mut startup_display);
     startup_display.flush().expect("could not flush buffer");
+
+    init_render_charging_gui(&mut charging_display);
+    charging_display.flush().expect("could not flush buffer");
 
     // Rendering Loop
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
