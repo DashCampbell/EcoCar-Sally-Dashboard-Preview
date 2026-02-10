@@ -1,5 +1,3 @@
-use std::sync::Mutex;
-
 /* Canbus values to render
 pub static RELAY_STATE: Mutex<ThreadModeRawMutex, RelayState> = Mutex::new(RelayState::RELAY_STRTP);
 
@@ -75,22 +73,26 @@ pub static RELAY_MOTOR_PACK: Mutex<ThreadModeRawMutex, FDCAN_RelPackMtr_t> =
         mtr_volt: 0,
         mtr_curr: 0,
     }); */
+
 use crate::{DisplayDevice, CENTER_POINT};
 use eg_seven_segment::SevenSegmentStyleBuilder;
 use embedded_graphics::mono_font::iso_8859_1::FONT_9X15;
 use embedded_graphics::mono_font::{MonoFont, MonoTextStyle};
+use embedded_graphics::text::renderer::CharacterStyle;
 use embedded_graphics::{
     pixelcolor::Rgb666,
     prelude::*,
     text::{Alignment, Text},
     Drawable,
 };
+use std::sync::Mutex;
 
 const MAX_ROWS_PER_COLUMN: i32 = 16;
 static CURRENT_ROW: Mutex<i32> = Mutex::new(0);
 
 fn render_can_value(field: &str, value: u32, render_field_name: bool, display: &mut DisplayDevice) {
-    let value = format!("{}", value);
+    let mut str_buffer = itoa::Buffer::new();
+    let value = str_buffer.format(value);
 
     const CAN_FONT: MonoFont<'static> = FONT_9X15;
     const FONT_WIDTH: u32 = CAN_FONT.character_size.width;
@@ -103,6 +105,8 @@ fn render_can_value(field: &str, value: u32, render_field_name: bool, display: &
         .segment_color(Rgb666::WHITE)
         .inactive_segment_color(Rgb666::BLACK)
         .build();
+    let mut clear_text_style = number_style.clone();
+    clear_text_style.set_text_color(Some(Rgb666::BLACK));
 
     let mut row = CURRENT_ROW.lock().unwrap();
     let col = if *row >= MAX_ROWS_PER_COLUMN { 1 } else { 0 };
@@ -113,17 +117,20 @@ fn render_can_value(field: &str, value: u32, render_field_name: bool, display: &
     );
     let number_pos = text_pos + Point::new(13 * FONT_WIDTH as i32, 0);
 
+    // Clear previous value
+    let clear_number =
+        Text::with_alignment("8888888888", number_pos, clear_text_style, Alignment::Right);
+    clear_number.draw(display).unwrap();
     // Render Field Value
-    let number = Text::with_alignment(&value, number_pos, number_style, Alignment::Right);
+    let number = Text::with_alignment(value, number_pos, number_style, Alignment::Right);
     number.draw(display).unwrap();
 
     // Render Field Name
     if render_field_name {
-        let field = format!("{}", field);
         let text_style = MonoTextStyle::new(&CAN_FONT, Rgb666::WHITE);
 
         // render field name
-        let text = Text::with_alignment(&field, text_pos, text_style, Alignment::Right);
+        let text = Text::with_alignment(field, text_pos, text_style, Alignment::Right);
         text.draw(display).unwrap();
 
         // render colon
@@ -138,7 +145,7 @@ fn render_can_value(field: &str, value: u32, render_field_name: bool, display: &
 ///
 /// `render_field_name` - If true then render the field name of each canbus value
 pub fn standby_gui(display: &mut DisplayDevice, render_field_name: bool, frame_index: u32) {
-    let mock_value = 1234567000 + frame_index;
+    let mock_value = 8u32.saturating_pow(frame_index / 10);
 
     // RELAY_STATE
     render_can_value("relay_state", mock_value, render_field_name, display);

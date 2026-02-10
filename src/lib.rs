@@ -7,7 +7,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 
-pub mod assets;
 pub mod charging;
 pub mod running;
 pub mod standby;
@@ -99,7 +98,7 @@ pub fn main_js() -> Result<(), JsValue> {
   <div id="running-mode" class="display">
   <h4>Running Mode</h4>
   </div>
-  
+
   <div id="standby-mode" class="display">
   <h4>Standby Mode</h4>
   </div>
@@ -107,11 +106,11 @@ pub fn main_js() -> Result<(), JsValue> {
   <div id="charging-mode" class="display">
   <h4>Charging Mode</h4>
   </div>
-  
+
   <div id="startup-mode" class="display">
   <h4>Startup Mode</h4>
   </div>
-  
+
   <footer>
   <p>Source Code: <a href="https://github.com/DashCampbell/EcoCar-Sally-Dashboard-Preview">https://github.com/DashCampbell/EcoCar-Sally-Dashboard-Preview</a></p>
   </footer>
@@ -171,8 +170,9 @@ pub fn main_js() -> Result<(), JsValue> {
     let g = f.clone();
 
     let mut i = 10;
+    let mut prev_i = i - 1;
     let mut increase_index = true;
-    const NUM_ITER: i32 = 99;
+    const NUM_ITER: i32 = 100;
 
     // Initial Frame
     let _ = startup_display.clear(Rgb666::BLACK);
@@ -195,13 +195,14 @@ pub fn main_js() -> Result<(), JsValue> {
     // Rendering Loop
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
         standby_gui(&mut standby_display, false, i);
-        charging_gui(&mut charging_display, i);
-        running_gui(&mut running_display, i);
+        charging_gui(&mut charging_display, i, prev_i);
+        running_gui(&mut running_display, i, prev_i);
 
         standby_display.flush().expect("could not flush buffer");
         charging_display.flush().expect("could not flush buffer");
         running_display.flush().expect("could not flush buffer");
 
+        prev_i = i;
         if increase_index {
             i += 1;
         } else {
@@ -210,7 +211,7 @@ pub fn main_js() -> Result<(), JsValue> {
         if i > NUM_ITER as u32 {
             i = NUM_ITER as u32;
             increase_index = false;
-        } else if i <= 10 {
+        } else if i <= 0 {
             increase_index = true;
         }
         // if i > NUM_ITER {

@@ -29,6 +29,7 @@ embedded-graphics = "0.8.1"
 
 # Embedded Graphics Libraries
 eg-seven-segment = "0.2.0"
+itoa = "1.0.17"
 
 # The `web-sys` crate allows you to interact with the various browser APIs,
 # like the DOM.

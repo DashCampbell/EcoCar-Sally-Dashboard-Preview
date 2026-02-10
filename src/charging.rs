@@ -4,6 +4,7 @@ use embedded_graphics::mono_font::iso_8859_13::FONT_10X20;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::prelude::WebColors;
 use embedded_graphics::primitives::StyledDrawable;
+use embedded_graphics::text::renderer::CharacterStyle;
 use embedded_graphics::{
     pixelcolor::Rgb666,
     prelude::*,
@@ -19,30 +20,45 @@ const BORDER_WIDTH: u32 = 2;
 const BATT_FONT_WIDTH: u32 = 20;
 const BATT_FONT_HEIGHT: u32 = 35;
 
-fn render_battery_voltage_gui(display: &mut DisplayDevice, batt_voltage: u32) {
+fn render_battery_voltage_gui(
+    display: &mut DisplayDevice,
+    batt_voltage: u32,
+    prev_batt_voltage: u32,
+) {
+    const DIGIT_SPACING: u32 = 3;
     const VOLTAGE_POS: Point = Point::new(
         CENTER_POINT.x + BATT_FONT_WIDTH as i32,
+        CENTER_POINT.y + BATT_FONT_HEIGHT as i32 / 2,
+    );
+    const CLEAR_TEXT_POS: Point = Point::new(
+        CENTER_POINT.x - DIGIT_SPACING as i32,
         CENTER_POINT.y + BATT_FONT_HEIGHT as i32 / 2,
     );
 
     // Define Styles
     let batt_style = SevenSegmentStyleBuilder::new()
         .digit_size(Size::new(BATT_FONT_WIDTH, BATT_FONT_HEIGHT))
-        .digit_spacing(3)
+        .digit_spacing(DIGIT_SPACING)
         .segment_width(4)
         .segment_color(Rgb666::WHITE)
         .inactive_segment_color(Rgb666::BLACK)
         .build();
+    let mut clear_style = batt_style.clone();
+    clear_style.set_text_color(Some(Rgb666::BLACK));
 
-    // Dynamic Text
-    Text::with_alignment(
-        format!("{}", batt_voltage).as_str(),
-        VOLTAGE_POS,
-        batt_style,
-        Alignment::Right,
-    )
-    .draw(display)
-    .unwrap();
+    let mut str_buffer = itoa::Buffer::new();
+    let batt_voltage_str = str_buffer.format(batt_voltage);
+
+    // Clear Dead Text
+    if prev_batt_voltage >= 10 && batt_voltage < 10 {
+        Text::with_alignment("8", CLEAR_TEXT_POS, clear_style, Alignment::Right)
+            .draw(display)
+            .unwrap();
+    }
+    // Render Battery Voltage
+    Text::with_alignment(batt_voltage_str, VOLTAGE_POS, batt_style, Alignment::Right)
+        .draw(display)
+        .unwrap();
 }
 
 fn render_battery_meter_gui(display: &mut DisplayDevice, frame_index: u32) {
@@ -103,8 +119,9 @@ pub fn init_render_charging_gui(display: &mut DisplayDevice) {
     .unwrap();
 }
 
-pub fn charging_gui(display: &mut DisplayDevice, frame_index: u32) {
+pub fn charging_gui(display: &mut DisplayDevice, frame_index: u32, prev_frame_index: u32) {
+    let prev_batt_voltage = (48f32 * (prev_frame_index as f32 / 100f32)) as u32;
     let batt_voltage = (48f32 * (frame_index as f32 / 100f32)) as u32;
-    render_battery_voltage_gui(display, batt_voltage);
+    render_battery_voltage_gui(display, batt_voltage, prev_batt_voltage);
     render_battery_meter_gui(display, frame_index);
 }
