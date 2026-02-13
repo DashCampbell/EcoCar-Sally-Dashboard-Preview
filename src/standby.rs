@@ -145,7 +145,7 @@ fn render_can_value(field: &str, value: u32, render_field_name: bool, display: &
 ///
 /// `render_field_name` - If true then render the field name of each canbus value
 pub fn standby_gui(display: &mut DisplayDevice, render_field_name: bool, frame_index: u32) {
-    let mock_value = 8u32.saturating_pow(frame_index / 10);
+    let mock_value = 8u32.saturating_pow(frame_index / 10) + frame_index;
 
     // RELAY_STATE
     render_can_value("relay_state", mock_value, render_field_name, display);

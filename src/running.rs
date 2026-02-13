@@ -70,7 +70,7 @@ fn render_speed_widgets(display: &mut DisplayDevice, speed: u32, prev_speed: u32
         .unwrap();
 }
 
-fn render_tach_widgets(display: &mut DisplayDevice, rpm: u32, prev_rpm: u32) {
+fn render_tach_widgets(display: &mut DisplayDevice, rpm: u32, _prev_rpm: u32) {
     // Define Styles
     let tach_line_width = 3;
 
